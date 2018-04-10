@@ -58,7 +58,7 @@ contract Bid is ErrorCodes, BidState {
     if (this.balance < amount) {
       return ErrorCodes.INSUFFICIENT_BALANCE;
     }
-    uint fee = 10000000 wei; // supplier absorbs the fee
+    uint fee = 10000000 wei; // buyer absorbs the fee
     uint amountWei = amount * 1 ether;
 
     // transfer will throw

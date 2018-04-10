@@ -98,14 +98,14 @@ contract ProjectManager is ErrorCodes, Util, ProjectState, ProjectEvent, BidStat
     return bid.settle(supplierAddress);
   }
 
-  function rejectProject(string name, address supplierAddress, address bidAddress) returns (ErrorCodes) {
+  function rejectProject(string name, address bidAddress) returns (ErrorCodes) {
     // validity
     if (!exists(name)) return (ErrorCodes.NOT_FOUND);
     // set project state
     address projectAddress = getProject(name);
     var (errorCode, state) = handleEvent(projectAddress, ProjectEvent.RECEIVE);
     if (errorCode != ErrorCodes.SUCCESS) return errorCode;
-    // settle
+    // reject
     Bid bid = Bid(bidAddress);
     return bid.reject(msg.sender);
   }

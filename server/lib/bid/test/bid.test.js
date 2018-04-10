@@ -157,40 +157,4 @@ describe('Bid tests', function() {
     // if didnt throw - error
     assert.isUndefined(result, 'call should have thrown INSUFFICIENT BALANCE, and not return a result');
   });
-
-  it('Check bid status', function* () {
-    const id = new Date().getTime();
-    const name = util.uid('Project');
-    const supplier = 'Supplier1';
-    const amount = 2345;
-
-    const contractArgs = {
-      _id: id,
-      _name: name,
-      _supplier: supplier,
-      _amount: amount,
-    };
-
-    const contract = yield bidJs.uploadContract(admin, contractArgs);
-
-    // function setBidState(address bidAddress, BidState state) returns (ErrorCodes) {
-    const method = 'setBidState';
-    const methodArgs = {
-      newState: 2,
-    };
-
-    // create target user
-    const username = util.uid('Bob');
-    const password = '1234';
-    const bob = yield rest.createUser(username, password);
-    // call method WITH value
-    const value = (new BigNumber(1234)).mul(constants.ETHER);
-    let result;
-    try {
-      result = yield rest.callMethod(admin, contract, method, methodArgs, value);
-    } catch(error) {
-      assert.equal(error.name, 'HttpError400');
-      assert.equal(error.status, '400');
-    }
-  });
 });

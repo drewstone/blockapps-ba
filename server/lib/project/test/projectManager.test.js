@@ -522,6 +522,61 @@ describe('ProjectManager Life Cycle tests', function() {
     }
   });
 
+  it('Accept a Bid (send funds into accepted bid), rejects the others, receive project, REJECT (send bid funds back to buyer)', function* () {
+    const uid = util.uid();
+    const projectArgs = createProjectArgs(uid);
+    const password = '1234';
+    const amount = 23;
+    const amountWei = new BigNumber(amount).times(constants.ETHER);
+    const FAUCET_AWARD = new BigNumber(1000).times(constants.ETHER) ;
+    const GAS_LIMIT = new BigNumber(100000000); // default in bockapps-rest
+
+    // create buyer and suppliers
+    const buyerArgs = createUserArgs(projectArgs.buyer, password, UserRole.BUYER);
+    const buyer = yield userManagerContract.createUser(buyerArgs);
+    buyer.password = password; // IRL this will be a prompt to the buyer
+    // create suppliers
+    const suppliers = yield createSuppliers(3, password, uid);
+
+    // create project
+    const project = yield contract.createProject(projectArgs);
+    // create bids
+    const createdBids = yield createMultipleBids(projectArgs.name, suppliers, amount);
+    { // test
+      const bids = yield projectManagerJs.getBidsByName(projectArgs.name);
+      assert.equal(createdBids.length, bids.length, 'should find all the created bids');
+    }
+    // get the buyers balance before accepting a bid
+    buyer.initialBalance = yield userManagerContract.getBalance(buyer.username);
+    buyer.initialBalance.should.be.bignumber.eq(FAUCET_AWARD);
+    // accept one bid (the first)
+    const acceptedBid = createdBids[0];
+    yield contract.acceptBid(buyer, acceptedBid.id, projectArgs.name);
+    // get the buyers balance after accepting a bid
+    buyer.balance = yield userManagerContract.getBalance(buyer.username);
+    const delta = buyer.initialBalance.minus(buyer.balance);
+    delta.should.be.bignumber.gte(amountWei); // amount + fee
+    delta.should.be.bignumber.lte(amountWei.plus(GAS_LIMIT)); // amount + max fee (gas-limit)
+    // get the bids
+    const bids = yield projectManagerJs.getBidsByName(projectArgs.name);
+    // check that the expected bid is ACCEPTED and all others are REJECTED
+    bids.map(bid => {
+      if (bid.id === acceptedBid.id) {
+        assert.equal(parseInt(bid.state), BidState.ACCEPTED, 'bid should be ACCEPTED');
+      } else {
+        assert.equal(parseInt(bid.state), BidState.REJECTED, 'bid should be REJECTED');
+      };
+    });
+    // deliver the project
+    const projectState = yield contract.handleEvent(projectArgs.name, ProjectEvent.DELIVER);
+    assert.equal(projectState, ProjectState.INTRANSIT, 'delivered project should be INTRANSIT ');
+    // reject the project
+    yield rejectProject(projectArgs.name);
+
+    buyer.balance = yield userManagerContract.getBalance(buyer.username);
+    assert.equal(buyer.balance, buyer.initialBalance);
+  });
+
   function* createSuppliers(count, password, uid) {
     const suppliers = [];
     for (let i = 0 ; i < count; i++) {
@@ -544,6 +599,16 @@ describe('ProjectManager Life Cycle tests', function() {
     yield contract.settleProject(projectName, supplier.account, bid.address);
   }
 
+  // throws: ErrorCodes
+  function* rejectProject(projectName) {
+    rest.verbose('rejectProject', projectName);
+    // get the accepted bid
+    const bid = yield projectManagerJs.getAcceptedBid(projectName);
+    // get the supplier for the accepted bid
+    const supplier = yield userManagerContract.getUser(bid.supplier);
+    // Settle the project:  change state to REJECTED and tell the bid to send the funds back to the buyer
+    yield contract.rejectProject(projectName, supplier.account, bid.address);
+  }
 });
 
 // function createUser(address account, string username, bytes32 pwHash, UserRole role) returns (ErrorCodes) {

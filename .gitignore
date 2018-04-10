@@ -43,3 +43,6 @@ config.yaml
 server/config/*.deploy.yaml
 
 .idea
+
+# package extras
+*lock.json

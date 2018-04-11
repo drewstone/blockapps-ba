@@ -54,10 +54,6 @@ contract Bid is ErrorCodes, BidState {
   }
 
   function reject(address buyer) returns (ErrorCodes) {
-    // confirm balance, to return error
-    if (this.balance < amount) {
-      return ErrorCodes.INSUFFICIENT_BALANCE;
-    }
     uint fee = 10000000 wei; // buyer absorbs the fee
     uint amountWei = amount * 1 ether;
 

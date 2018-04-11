@@ -98,16 +98,16 @@ contract ProjectManager is ErrorCodes, Util, ProjectState, ProjectEvent, BidStat
     return bid.settle(supplierAddress);
   }
 
-  function rejectProject(string name, address bidAddress) returns (ErrorCodes) {
+  function rejectProject(string name, address buyerAddress, address bidAddress) returns (ErrorCodes) {
     // validity
     if (!exists(name)) return (ErrorCodes.NOT_FOUND);
     // set project state
     address projectAddress = getProject(name);
-    var (errorCode, state) = handleEvent(projectAddress, ProjectEvent.RECEIVE);
+    var (errorCode, state) = handleEvent(projectAddress, ProjectEvent.REJECT);
     if (errorCode != ErrorCodes.SUCCESS) return errorCode;
     // reject
     Bid bid = Bid(bidAddress);
-    return bid.reject(msg.sender);
+    return bid.reject(buyerAddress);
   }
 
   /**
@@ -145,7 +145,10 @@ contract ProjectManager is ErrorCodes, Util, ProjectState, ProjectEvent, BidStat
     if (state == ProjectState.INTRANSIT) {
       if (projectEvent == ProjectEvent.RECEIVE)
         return (ErrorCodes.SUCCESS, ProjectState.RECEIVED);
+      else if (projectEvent == ProjectEvent.REJECT)
+        return (ErrorCodes.SUCCESS, ProjectState.REJECTED);
     }
+
     return (ErrorCodes.ERROR, state);
   }
 }

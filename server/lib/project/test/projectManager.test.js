@@ -456,7 +456,7 @@ describe('ProjectManager Life Cycle tests', function() {
     assert.equal(filtered.length, 1, 'one and only one');
   });
 
-  it.skip('Accept a Bid (send funds into accepted bid), rejects the others, receive project, settle (send bid funds to supplier)', function* () {
+  it('Accept a Bid (send funds into accepted bid), rejects the others, receive project, settle (send bid funds to supplier)', function* () {
     const uid = util.uid();
     const projectArgs = createProjectArgs(uid);
     const password = '1234';
@@ -522,7 +522,7 @@ describe('ProjectManager Life Cycle tests', function() {
     }
   });
 
-  it('Accept a Bid (send funds into accepted bid), rejects the others, receive project, REJECT (send bid funds back to buyer)', function* () {
+  it.only('Accept a Bid (send funds into accepted bid), rejects the others, receive project, REJECT (send bid funds back to buyer)', function* () {
     const uid = util.uid();
     const projectArgs = createProjectArgs(uid);
     const password = '1234';
@@ -570,16 +570,12 @@ describe('ProjectManager Life Cycle tests', function() {
     // deliver the project
     const projectState = yield contract.handleEvent(projectArgs.name, ProjectEvent.DELIVER);
     assert.equal(projectState, ProjectState.INTRANSIT, 'delivered project should be INTRANSIT ');
-    
-    // receive the project
-    yield receiveProject(projectArgs.name);
 
     // reject the project
-    yield rejectProject(projectArgs.name);
+    yield rejectProject(projectArgs.name, buyer.username);
 
     const updatedBalance = yield userManagerContract.getBalance(buyer.username);
-    console.log(updatedBalance.toNumber(), buyer.balance.toNumber(), buyer.initialBalance.toNumber());
-    // assert.ok(updatedBalance.toNumber() > buyer.balance.toNumber());
+    assert.isBelow(buyer.balance.toNumber(), updatedBalance.toNumber(), `${updatedBalance.toNumber()},${buyer.balance.toNumber()}`);
   });
 
   function* createSuppliers(count, password, uid) {
@@ -605,14 +601,15 @@ describe('ProjectManager Life Cycle tests', function() {
   }
 
   // throws: ErrorCodes
-  function* rejectProject(projectName) {
+  function* rejectProject(projectName, username) {
+    console.log(username);
     rest.verbose('rejectProject', projectName);
     // get the accepted bid
     const bid = yield projectManagerJs.getAcceptedBid(projectName);
-    // get the supplier for the accepted bid
-    const supplier = yield userManagerContract.getUser(bid.supplier);
+    // get the buyer
+    const buyer = yield userManagerContract.getUser(username);
     // Settle the project:  change state to REJECTED and tell the bid to send the funds back to the buyer
-    yield contract.rejectProject(projectName, supplier.account, bid.address);
+    yield contract.rejectProject(projectName, buyer.account, bid.address);
   }
 });
 
